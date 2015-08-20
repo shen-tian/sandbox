@@ -58,6 +58,10 @@ table {
 
 /* ====== Specific to this page ===== */
 
+body {
+	font-family: Helvetica;
+}
+
 .the-block {
 	width: 100%;
 	background: yellow;
@@ -74,8 +78,10 @@ table {
 .left-side,
 .right-side {
 	width: 15%;
-	height: 400px;
-	line-height: 400px;
+	height: 600px;
+	line-height: 600px;
+	color: white;
+	font-size: 36px;
 }
 
 .left-side:hover,
@@ -86,6 +92,10 @@ table {
 .middle-block {
 	width: 70%;
 	padding: 100px 100px;
+	background-image: url("../images/partycat.png");
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
 }
 
 .btn {
@@ -93,4 +103,10 @@ table {
 	border: 2px solid white;
 	padding: 20px 50px;
 	color: white;
+	font-size: 36px;
 }
+
+.btn:hover {
+	color: gray;
+	background: white;
+}	
