@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 import urllib2
 import re
+import requesocks
 
 # An entry on AutoTrader. Generally, it's an used car, but could be new too.
 class ATEntry(object):
@@ -82,25 +83,35 @@ class ATScraper(object):
         return entry
     
     # Go through all entries
-    def scrapeAllEntries(self):
+    def scrapeAllEntries(self, tor=False):
         entries = []
         numOfPages = self.getNumberOfPages()
         print "there are %s pages" % numOfPages
         for pageNum in range(1, numOfPages + 1):
             print "pulling page %s" % pageNum
-            entries = entries + self.scrapeEntries(str(pageNum))
+            newEntries = self.scrapeEntries(str(pageNum), tor)
+            entries = entries + newEntries
         return entries
     
     # Go through all entries on the page
-    def scrapeEntries(self, page):
-        content = urllib2.urlopen(self.url + page).read()
-        soup = BeautifulSoup(content, "html5lib")
+    def scrapeEntries(self, page, tor=False):
+    
+        session = requesocks.session()
+        #Use Tor for both HTTP and HTTPS
+        if tor:
+            session.proxies = {'http': 'socks5://localhost:9150', 
+            'https': 'socks5://localhost:9150'}
+
+        response = session.get(self.url)
+        content = response.text
+        soup = BeautifulSoup(response.text, "html5lib")
     
         entries = []
         for result in soup.find_all("div", "searchResult"): 
             entries = entries + [self.parseResult(result)]
         return entries
         
+    # Gives number of pages for this query
     def getNumberOfPages(self):
         content = urllib2.urlopen(self.url + "1").read()
         soup = BeautifulSoup(content, "html5lib")
