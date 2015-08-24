@@ -1,13 +1,15 @@
 from atscraper import ATScraper
 
 firstPage = 1
-lastPage = 60
+lastPage = 3
 
-scraper = ATScraper("suzuki")
+scraper = ATScraper("suzuki", "jimny")
 
 target = open("foo.csv", "w")
+lastPage = scraper.getNumberOfPages()
+print "there are %s pages" % lastPage
 
-for pageNum in range(firstPage, lastPage):
+for pageNum in range(firstPage, lastPage + 1):
     print "pulling page %s" % pageNum
     
     entries = scraper.scrapeEntries(str(pageNum))

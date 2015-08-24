@@ -18,12 +18,20 @@ class ATEntry(object):
 class ATScraper(object):
 
     # Constructor
-    def __init__(self, make):
-        self.make = make
-        self.url = "http://www.autotrader.co.za/makemodel/make/%s/search?sort=PriceAsc&pageNumber=" % make
-        print self.url
+    def __init__(self, make="", model=""):
+        filterString = ""
         
-    
+        self.make = make
+        if make is not "":
+            filterString = filterString + "/makemodel/make/%s" % make
+        
+        self.model = model
+        if model is not "":
+            filterString = filterString + "/model/%s" % model
+            
+        self.url = "http://www.autotrader.co.za%s" \
+        "/search?sort=PriceAsc&pageNumber=" % filterString
+            
     # Try to make an int. Failing that, -1
     def tryParseInt(self, str):
         try:
@@ -37,27 +45,31 @@ class ATScraper(object):
         carName = ""
         carYear = -1
         carPrice = -1
-    
-        # Need to do a bit of shuffling here for promoted/otherwise cars
-        if(result.find("h2", "serpTitle") is not None):
-            carName = result.find("h2", "serpTitle").string.strip()
-        elif (result.find("h2", "serpTitleSma") is not None):
-            carName = result.find("h2", "serpTitleSma").string.strip()
+        specs = []
+        mileage = -1
+        new = False
+            
+        # This portion is different for the three classes 
+        # (newCar, featureRes, and standard)
+        if "newCar" in result["class"]:
+            carName = result.find("div", "resultHeader").find("h2").string.strip()
+            yearPortion = carName[:4]
+            carYear = self.tryParseInt(yearPortion)
+            carName = carName[4:].strip()
+            new = True
         else:
-            carName = "Something went wrong here"
+            if "featureRes" in result["class"]:
+                carName = result.find("h2", "serpTitleSma").string.strip()
+            else:
+                carName = result.find("h2", "serpTitle").string.strip()
+            carYear = self.tryParseInt(result.find("div", "serpAge").string)
         
+        # This is the same for all three classes
         carPrice = self.tryParseInt(result.find("div", "serpPrice").contents[0])
-        carYear = self.tryParseInt(result.find("div", "serpAge").string)
     
         entry = ATEntry(carName, carYear, carPrice)
-        
-        specList = result.find("ul", "advertSpecs")
     
-        specs = []
-    
-        mileage = -1
-    
-        for spec in specList.find_all("li"):
+        for spec in result.find("ul", "advertSpecs").find_all("li"):
             specString = spec.string.strip()
             specs = specs + [specString]
             if specString.endswith("km"):
@@ -65,9 +77,11 @@ class ATScraper(object):
     
         entry.specs = specs 
         entry.mileage = mileage 
+        entry.new = new
     
         return entry
     
+    # Go through all entries on the page
     def scrapeEntries(self, page):
         content = urllib2.urlopen(self.url + page).read()
         soup = BeautifulSoup(content, "html5lib")
@@ -76,3 +90,11 @@ class ATScraper(object):
         for result in soup.find_all("div", "searchResult"): 
             entries = entries + [self.parseResult(result)]
         return entries
+        
+    def getNumberOfPages(self):
+        content = urllib2.urlopen(self.url + "1").read()
+        soup = BeautifulSoup(content, "html5lib")
+        
+        lastPageLink = soup.find("ol", "paginator").find("a", "last")
+        url = lastPageLink["href"]
+        return self.tryParseInt(url[url.rfind("=")+1:])
