@@ -81,6 +81,16 @@ class ATScraper(object):
     
         return entry
     
+    # Go through all entries
+    def scrapeAllEntries(self):
+        entries = []
+        numOfPages = self.getNumberOfPages()
+        print "there are %s pages" % numOfPages
+        for pageNum in range(1, numOfPages + 1):
+            print "pulling page %s" % pageNum
+            entries = entries + self.scrapeEntries(str(pageNum))
+        return entries
+    
     # Go through all entries on the page
     def scrapeEntries(self, page):
         content = urllib2.urlopen(self.url + page).read()
@@ -96,5 +106,8 @@ class ATScraper(object):
         soup = BeautifulSoup(content, "html5lib")
         
         lastPageLink = soup.find("ol", "paginator").find("a", "last")
-        url = lastPageLink["href"]
-        return self.tryParseInt(url[url.rfind("=")+1:])
+        if lastPageLink is not None:
+            url = lastPageLink["href"]
+            return self.tryParseInt(url[url.rfind("=")+1:])
+        else:
+            return 1
