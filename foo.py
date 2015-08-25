@@ -1,15 +1,18 @@
 from atscraper import ATScraper
 
-make = "audi"
-model = "a8"
+make = ""
+model = ""
 
-scraper = ATScraper(make, model)
+scraper = ATScraper(make, model, True)
 
 fileName = "%s-%s.csv" % (make, model)
 
+if make == "":
+    fileName = "all.csv"
+
 target = open(fileName, "w")
     
-entries = scraper.scrapeAllEntries(True)
+entries = scraper.scrapeAllEntries()
 
 
 for entry in entries:

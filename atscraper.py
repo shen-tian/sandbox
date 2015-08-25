@@ -19,7 +19,7 @@ class ATEntry(object):
 class ATScraper(object):
 
     # Constructor
-    def __init__(self, make="", model=""):
+    def __init__(self, make="", model="", tor=False):
         filterString = ""
         
         self.make = make
@@ -32,6 +32,12 @@ class ATScraper(object):
             
         self.url = "http://www.autotrader.co.za%s" \
         "/search?sort=PriceAsc&pageNumber=" % filterString
+        
+        self.session = requesocks.session()
+        #Use Tor for both HTTP and HTTPS
+        if tor:
+            self.session.proxies = {'http': 'socks5://localhost:9150', 
+            'https': 'socks5://localhost:9150'}
             
     # Try to make an int. Failing that, -1
     def tryParseInt(self, str):
@@ -83,26 +89,20 @@ class ATScraper(object):
         return entry
     
     # Go through all entries
-    def scrapeAllEntries(self, tor=False):
+    def scrapeAllEntries(self):
         entries = []
         numOfPages = self.getNumberOfPages()
         print "there are %s pages" % numOfPages
         for pageNum in range(1, numOfPages + 1):
             print "pulling page %s" % pageNum
-            newEntries = self.scrapeEntries(str(pageNum), tor)
+            newEntries = self.scrapeEntries(str(pageNum))
             entries = entries + newEntries
         return entries
     
     # Go through all entries on the page
-    def scrapeEntries(self, page, tor=False):
+    def scrapeEntries(self, page):
     
-        session = requesocks.session()
-        #Use Tor for both HTTP and HTTPS
-        if tor:
-            session.proxies = {'http': 'socks5://localhost:9150', 
-            'https': 'socks5://localhost:9150'}
-
-        response = session.get(self.url)
+        response = self.session.get(self.url + page)
         content = response.text
         soup = BeautifulSoup(response.text, "html5lib")
     
@@ -113,7 +113,8 @@ class ATScraper(object):
         
     # Gives number of pages for this query
     def getNumberOfPages(self):
-        content = urllib2.urlopen(self.url + "1").read()
+        response = self.session.get(self.url + "1")
+        content = response.text
         soup = BeautifulSoup(content, "html5lib")
         
         lastPageLink = soup.find("ol", "paginator").find("a", "last")
