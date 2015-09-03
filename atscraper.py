@@ -11,6 +11,7 @@ class ATEntry(object):
         self.model = model
         self.year = year
         self.price = price
+        self.mileage = -1
         
     def displayCsv(self):
         return "%s,%s,%s,%s" % (self.year, self.model, self.price, self.mileage)
@@ -29,7 +30,7 @@ class ATScraper(object):
         self.model = model
         if model is not "":
             filterString = filterString + "/model/%s" % model
-            
+        
         self.url = "http://www.autotrader.co.za%s" \
         "/search?sort=PriceAsc&pageNumber=" % filterString
         self.tor = tor
