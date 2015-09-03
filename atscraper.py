@@ -105,7 +105,7 @@ class ATScraper(object):
         return entries
     
     # Go through all entries on the page
-    @profile
+    # @profile
     def scrapeEntries(self, page):
         print "pulling page %s" % page
         try:
