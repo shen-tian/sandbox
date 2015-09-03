@@ -1,9 +1,9 @@
 from atscraper import ATScraper
 
-make = ""
-model = ""
+make = "suzuki"
+model = "jimny"
 
-scraper = ATScraper(make, model, True)
+scraper = ATScraper(make, model, False)
 
 fileName = "%s-%s.csv" % (make, model)
 

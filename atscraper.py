@@ -2,11 +2,12 @@ from bs4 import BeautifulSoup
 import urllib2
 import re
 import requesocks
+import time
 
 # An entry on AutoTrader. Generally, it's an used car, but could be new too.
 class ATEntry(object):
     
-    # Constructor, maybe?
+    # Constructor
     def __init__(self, model, year, price):
         self.model = model
         self.year = year
@@ -32,12 +33,17 @@ class ATScraper(object):
             
         self.url = "http://www.autotrader.co.za%s" \
         "/search?sort=PriceAsc&pageNumber=" % filterString
+        self.tor = tor
         
+        self.makeSession()
+            
+    def makeSession(self):
         self.session = requesocks.session()
         #Use Tor for both HTTP and HTTPS
-        if tor:
+        if self.tor:
             self.session.proxies = {'http': 'socks5://localhost:9150', 
             'https': 'socks5://localhost:9150'}
+        
             
     # Try to make an int. Failing that, -1
     def tryParseInt(self, str):
@@ -93,19 +99,23 @@ class ATScraper(object):
         entries = []
         numOfPages = self.getNumberOfPages()
         print "there are %s pages" % numOfPages
-        for pageNum in range(1, numOfPages + 1):
-            print "pulling page %s" % pageNum
+        for pageNum in range(1, numOfPages + 1):    
             newEntries = self.scrapeEntries(str(pageNum))
             entries = entries + newEntries
         return entries
     
     # Go through all entries on the page
+    @profile
     def scrapeEntries(self, page):
-    
-        response = self.session.get(self.url + page)
-        content = response.text
-        soup = BeautifulSoup(response.text, "html5lib")
-    
+        print "pulling page %s" % page
+        try:
+            response = self.session.get(self.url + page, timeout=5)
+            soup = BeautifulSoup(response.text, "html.parser")
+        except Exception:
+            print "Timeout for page %s" % page
+            time.sleep(1)
+            self.makeSession()
+            return self.scrapeEntries(page)
         entries = []
         for result in soup.find_all("div", "searchResult"): 
             entries = entries + [self.parseResult(result)]
