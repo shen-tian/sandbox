@@ -1,5 +1,4 @@
 from bs4 import BeautifulSoup
-import urllib2
 import re
 import requesocks
 import time
@@ -129,7 +128,7 @@ class ATScraper(object):
     def getNumberOfPages(self):
         response = self.session.get(self.url + "1")
         content = response.text
-        soup = BeautifulSoup(content, "html5lib")
+        soup = BeautifulSoup(content, "html.parser")
         
         lastPageLink = soup.find("ol", "paginator").find("a", "last")
         if lastPageLink is not None:
