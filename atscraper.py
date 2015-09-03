@@ -118,7 +118,11 @@ class ATScraper(object):
             return self.scrapeEntries(page)
         entries = []
         for result in soup.find_all("div", "searchResult"): 
-            entries = entries + [self.parseResult(result)]
+            try:
+                entry = self.parseResult(result)
+            except:
+                entry = ATEntry("error", -1, -1)
+            entries = entries + [entry]
         return entries
         
     # Gives number of pages for this query
