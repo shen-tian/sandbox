@@ -1,5 +1,7 @@
 from atscraper import ATScraper
 import argparse
+import logging
+import datetime
 
 parser = argparse.ArgumentParser(description='Scraper for autotrader.co.za')
 
@@ -17,6 +19,13 @@ model =  result.model
 
 scraper = ATScraper(make, model, result.tor)
 
+logging.basicConfig(level=logging.INFO)
+handler = logging.FileHandler('scrape-%s.log' % datetime.datetime.now().strftime("%Y%m%d-%H%M"))
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+handler.setFormatter(formatter)
+logging.getLogger().addHandler(handler)
+
 fileName = "%s-%s.csv" % (make, model)
 
 if make == "":
@@ -24,14 +33,12 @@ if make == "":
 
 target = open(fileName, "w")
     
-entries = scraper.scrapeAllEntries()
+entries = scraper.scrape_all_entries()
 
 for entry in entries:
-    if len(entries) < 100:
-        print entry.displayCsv()
-    target.write(entry.displayCsv().encode("utf-8"))
+    target.write(entry.display_csv().encode("utf-8"))
     target.write("\n")
 target.close()
 
-print "Wrote output to %s" % fileName
+#logger.info("Wrote output to %s" % fileName)
     

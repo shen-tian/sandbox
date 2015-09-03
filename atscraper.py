@@ -2,19 +2,22 @@ from bs4 import BeautifulSoup
 import re
 import requesocks
 import time
+import logging
+import traceback
 
 # An entry on AutoTrader. Generally, it's an used car, but could be new too.
 class ATEntry(object):
-    
-    # Constructor
-    def __init__(self, model, year, price):
+
+    # Constructor. Needs 
+    def __init__(self, model, year, price, mileage, url):
         self.model = model
         self.year = year
         self.price = price
         self.mileage = -1
+        self.url = url
         
-    def displayCsv(self):
-        return "%s,%s,%s,%s" % (self.year, self.model, self.price, self.mileage)
+    def display_csv(self):
+        return "%s\t%s\t%s\t%s" % (self.year, self.model, self.price, self.mileage)
 
 # Scraper itself        
 class ATScraper(object):
@@ -36,6 +39,9 @@ class ATScraper(object):
         self.tor = tor
         
         self.makeSession()
+        
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
             
     def makeSession(self):
         self.session = requesocks.session()
@@ -46,7 +52,7 @@ class ATScraper(object):
         
             
     # Try to make an int. Failing that, -1
-    def tryParseInt(self, str):
+    def try_parse_int(self, str):
         try:
             cleaned = re.sub("[^0-9]", "", str)
             return int(cleaned)
@@ -54,86 +60,88 @@ class ATScraper(object):
             return -1
     
     # Takes a searchResult tag from a page and scrapes it for info.
-    def parseResult(self, result):
-        carName = ""
-        carYear = -1
-        carPrice = -1
+    def parse_result(self, result):
+        car_name = ""
+        car_year = -1
+        car_price = -1
         specs = []
         mileage = -1
         new = False
+        url = ""
             
         # This portion is different for the three classes 
         # (newCar, featureRes, and standard)
         if "newCar" in result["class"]:
-            carName = result.find("div", "resultHeader").find("h2").string.strip()
-            yearPortion = carName[:4]
-            carYear = self.tryParseInt(yearPortion)
-            carName = carName[4:].strip()
+            car_name = result.find("div", "resultHeader").find("h2").string.strip()
+            year_portion = car_name[:4]
+            car_year = self.try_parse_int(year_portion)
+            car_name = car_name[4:].strip()
             new = True
         else:
             if "featureRes" in result["class"]:
-                carName = result.find("h2", "serpTitleSma").string.strip()
+                car_name = result.find("h2", "serpTitleSma").string.strip()
             else:
-                carName = result.find("h2", "serpTitle").string.strip()
-            carYear = self.tryParseInt(result.find("div", "serpAge").string)
+                car_name = result.find("h2", "serpTitle").string.strip()
+            car_year = self.try_parse_int(result.find("div", "serpAge").string)
         
         # This is the same for all three classes
-        carPrice = self.tryParseInt(result.find("div", "serpPrice").contents[0])
-    
-        entry = ATEntry(carName, carYear, carPrice)
+        car_price = self.try_parse_int(result.find("div", "serpPrice").contents[0])
     
         for spec in result.find("ul", "advertSpecs").find_all("li"):
-            specString = spec.string.strip()
-            specs = specs + [specString]
-            if specString.endswith("km"):
-                mileage = self.tryParseInt(specString)
+            spec_string = spec.string.strip()
+            specs = specs + [spec_string]
+            if spec_string.endswith("km"):
+                mileage = self.try_parse_int(spec_string)
     
-        entry.specs = specs 
-        entry.mileage = mileage 
+        entry = ATEntry(car_name, car_year, car_price, mileage, url)
+    
         entry.new = new
-    
+        entry.specs = specs
+          
         return entry
     
     # Go through all entries
-    def scrapeAllEntries(self):
+    def scrape_all_entries(self):
         entries = []
-        numOfPages = self.getNumberOfPages()
-        print "there are %s pages" % numOfPages
-        for pageNum in range(1, numOfPages + 1):    
-            newEntries = self.scrapeEntries(str(pageNum))
-            entries = entries + newEntries
+        num_of_pages = self.get_number_of_pages()
+        self.logger.info("There are %s pages" % num_of_pages)
+        for page_num in range(1, num_of_pages + 1):    
+            new_entries = self.scrape_entries(str(page_num))
+            entries = entries + new_entries
         return entries
     
     # Go through all entries on the page
-    # @profile
-    def scrapeEntries(self, page):
-        print "pulling page %s" % page
+    def scrape_entries(self, page):
+        self.logger.info("Downloading page %s" % page)
         try:
             response = self.session.get(self.url + page, timeout=5)
             soup = BeautifulSoup(response.text, "html.parser")
         except Exception:
-            print "Timeout for page %s" % page
+            self.logger.warn("Timeout for page %s" % page)
             time.sleep(1)
             self.makeSession()
             return self.scrapeEntries(page)
+            
         entries = []
         for result in soup.find_all("div", "searchResult"): 
             try:
-                entry = self.parseResult(result)
+                entry = self.parse_result(result)
+                entries = entries + [entry]
             except:
-                entry = ATEntry("error", -1, -1)
-            entries = entries + [entry]
+                self.logger.warn("Error parsing entry on page %s" % page)
+                self.logger.debug(traceback.format_exc())
+                self.logger.debug(result.text)
         return entries
         
     # Gives number of pages for this query
-    def getNumberOfPages(self):
+    def get_number_of_pages(self):
         response = self.session.get(self.url + "1")
         content = response.text
         soup = BeautifulSoup(content, "html.parser")
         
-        lastPageLink = soup.find("ol", "paginator").find("a", "last")
-        if lastPageLink is not None:
-            url = lastPageLink["href"]
-            return self.tryParseInt(url[url.rfind("=")+1:])
+        last_page_link = soup.find("ol", "paginator").find("a", "last")
+        if last_page_link is not None:
+            url = last_page_link["href"]
+            return self.try_parse_int(url[url.rfind("=")+1:])
         else:
             return 1
