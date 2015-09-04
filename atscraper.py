@@ -13,7 +13,7 @@ class ATEntry(object):
         self.model = model
         self.year = year
         self.price = price
-        self.mileage = -1
+        self.mileage = mileage
         self.url = url
         
     def display_csv(self):
@@ -128,7 +128,7 @@ class ATScraper(object):
             self.logger.warn("Timeout for page %s" % page)
             time.sleep(1)
             self.makeSession()
-            return self.scrapeEntries(page)
+            return self.scrape_entries(page)
             
         entries = []
         for result in soup.find_all("div", "searchResult"): 
