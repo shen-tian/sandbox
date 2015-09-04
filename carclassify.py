@@ -1,4 +1,7 @@
 import csv
+import logging
+import datetime
+import traceback
 
 # A raw entry, to be classified. 
 class CarEntry(object):
@@ -33,45 +36,81 @@ class CarClassifier(object):
     # file_name is file with classification data
     def __init__(self, file_name):
         self.known_makes = ("volkswagen","toyota","bmw","audi","mercedes-benz",
-            "ford","hyundai","chevrolet","nissan")
-        self.known_models = ("polo", "polo vivo")
-        self.known_specs = ("auto", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "2.0")
-    
+            "ford","hyundai","chevrolet","nissan", "land rover", "kia", "jeep",
+            "opel","renault","isuzu","honda", "range rover", "suzuki", "mini", "mazda",
+            "peugeot")
+        self.known_models = ("polo", "polo vivo", "3 series", "c-class", "hilux", "golf",
+            "corolla", "raider", "i20", "ranger", "etios", "1 series", "a4", "kb", "spark",
+            "a3", "fortuner", "5 series", "figo", "i10", "ix35", "np200", "corsa", "amarok",
+            "grand i10", "a3 sportback", "4 series")
+        self.known_submodels = ("3.0d-4d", "2.0tdi", "gti", "tdi", "320i", "1.8t", "320d",
+            "cooper", "1.4t", "1.4tsi")
+        self.known_specs = ("auto", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", 
+            "2.0", "a/t", "1.0", "tsi", "quattro", "dsg", "2.4", "2.5", "3.0", "3.2", "at")
+        self.known_shapes = ("hatch", "sedan", "double cab", "5-door", "5dr", "4x4", 
+            "coupe", "single cab", "p/u", "s/c")
+        self.known_trims = ("trendline", "comfortline", "sport", "s", "m", "ls", 
+            "xs", "gls", "se", "avantgarde", "ambiente", "amg", "highline")
+        
     def infer(self, car_entry):
         self.infer_make(car_entry)
         self.infer_model(car_entry)
+        self.infer_prop(car_entry, self.known_submodels, "submodel")
         self.infer_spec(car_entry)
+        self.infer_prop(car_entry, self.known_shapes, "shape")
+        self.infer_prop(car_entry, self.known_trims, "trim")
         
-           
-    def infer_make(self, car_entry):
-        for token in car_entry.tokens:
-            if token[0] in self.known_makes:
-                token[1] = "make"
-                car_entry.make = token[0]
+    # This shit is way too messy :(. Refactor?
     
-    def infer_model(self, car_entry):
+    def infer_prop(self, car_entry, known_values, meta_tag):
+        return_val = ""
+        
         for token in car_entry.tokens:
-            if token[0] in self.known_models:
-                token[1] = "model"
-                car_entry.model = token[0]
+            if token[0] in known_values:
+                token[1] = meta_tag
+                return_val = token[0]
         
         for index in range(0, len(car_entry.tokens) - 2):
-            double_token = car_entry.tokens[index][0] + " " + car_entry.tokens[index + 1][0]
-            if double_token in self.known_models:
-                car_entry.tokens[index][1] = "model"
-                car_entry.tokens[index + 1][1] = "model"
-                car_entry.model = double_token
+            double_token = car_entry.tokens[index][0] + " " + \
+                car_entry.tokens[index + 1][0]
+            if double_token in known_values:
+                car_entry.tokens[index][1] = meta_tag
+                car_entry.tokens[index + 1][1] = meta_tag
+                return_val = double_token
+        
+        return return_val
+    
+    
+    def infer_make(self, car_entry):
+        car_entry.make = self.infer_prop(car_entry, self.known_makes, "make")
+    
+    def infer_model(self, car_entry):
+        car_entry.model = self.infer_prop(car_entry, self.known_models, "model")
                 
     def infer_spec(self, car_entry):
-        for token in car_entry.tokens:
-            if token[0] in self.known_specs:
-                token[1] = "spec"
+        self.infer_prop(car_entry, self.known_specs, "spec")
         
 # Main
 
 file_name = "sep-all.csv"
 min_year = 2010
 
+# Logging shit
+
+handler = logging.FileHandler('carclassify-%s.log' % datetime.datetime.now().strftime("%Y%m%d-%H%M"))
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+handler.setFormatter(formatter)
+
+s_handler = logging.StreamHandler()
+s_handler.setLevel(logging.INFO)
+s_handler.setFormatter(formatter)
+
+logging.getLogger().setLevel(logging.DEBUG)
+logging.getLogger().addHandler(handler)
+logging.getLogger().addHandler(s_handler)
+
+logger = logging.getLogger()
 
 # Initialise the classification engine
 
@@ -79,15 +118,19 @@ classifier = CarClassifier("cardata.json")
 
 # Read input
 
+logger.info("Reading input")
+
 raw_data = []
 with open(file_name, 'rb') as f:
-    reader = csv.reader(f,delimiter =",")
+    reader = csv.reader(f, delimiter =",")
     for row in reader:
-        raw_data = raw_data + [row]
+        raw_data.append(row)
 
 # Filter
 
-clean_data = []
+logger.info("Filtering data")
+
+hashes = {}
 entries = []
 
 for row in raw_data:
@@ -96,15 +139,21 @@ for row in raw_data:
         price = int(row[2])
         mileage = int(row[3])
     
-        if (row not in clean_data) and (year > min_year) and (price > 1):
-            clean_data.append(row)
+        row_as_string = row[0] + row[1] + row[2] + row[3]
+        
+        if (row_as_string not in hashes) and (year > min_year) and (price > 1):
+            hashes[row_as_string] = 1
+            #clean_data.append(row)
             entries.append(CarEntry(row[1], year, price, mileage))
     except:
-        pass
+        logger.debug("Parsing error with %s" % row[1])
+        logger.debug(traceback.format_exc())
 
-print "Starting with %s entries. filtered down to %s" % (len(raw_data), len(clean_data))
+logger.info("Starting with %s entries. filtered down to %s" % (len(raw_data), len(entries)))
 
 # Try to classify everything
+
+logger.info("Classifying")
 
 unknown_wordlist = {}
 
@@ -128,11 +177,26 @@ for entry in entries:
 
 # Report on success
 
-print "Infered %s makes and %s models" % (make_infered, model_infered)
+logger.info("Infered %s makes and %s models" % (make_infered, model_infered))
 
 # Report on outstanding tokens
 
-print "Unrecognised tokens"
+logger.info("Unrecognised tokens")
 
-for x in sorted(unknown_wordlist, key=unknown_wordlist.get, reverse=True)[:20]:
-	print "%5s %s" % (unknown_wordlist[x], x)
+for x in sorted(unknown_wordlist, key=unknown_wordlist.get, reverse=True)[:50]:
+	logger.info("%5s %s" % (unknown_wordlist[x], x))
+	rlu_make = {}
+	rlu_model = {}
+	for entry in entries:
+	    if x in entry.description:
+	        if entry.know_make():
+	            if entry.make in rlu_make:
+	                rlu_make[entry.make] += 1
+	            else:
+	                rlu_make[entry.make] = 1
+	breakdown_str = ""
+	for word in rlu_make:
+	    percentage = rlu_make[word]/float(unknown_wordlist[x])
+	    if percentage > 0.05:
+	        breakdown_str = breakdown_str + "%s:%.2f " % (word, percentage)
+	logger.info(breakdown_str)
