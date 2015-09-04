@@ -30,8 +30,9 @@ class CarEntry(object):
         
     def has_word(self, word):
         for token in self.tokens:
-            if token[0] is word: 
-                return True
+            if token[0] == word: 
+                return token[1] is ""
+                
         return False
         
 
@@ -49,14 +50,12 @@ class CarClassifier(object):
             "corolla", "raider", "i20", "ranger", "etios", "1 series", "a4", "kb", "spark",
             "a3", "fortuner", "5 series", "figo", "i10", "ix35", "np200", "corsa", "amarok",
             "grand i10", "a3 sportback", "4 series")
-        self.known_submodels = ("3.0d-4d", "2.0tdi", "gti", "tdi", "320i", "1.8t", "320d",
-            "cooper", "1.4t", "1.4tsi")
+        self.known_submodels = ("3.0d-4d","tdi")
         self.known_specs = ("auto", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", 
             "2.0", "a/t", "1.0", "tsi", "quattro", "dsg", "2.4", "2.5", "3.0", "3.2", "at")
         self.known_shapes = ("hatch", "sedan", "double cab", "5-door", "5dr", "4x4", 
             "coupe", "single cab", "p/u", "s/c")
-        self.known_trims = ("trendline", "comfortline", "sport", "s", "m", "ls", 
-            "xs", "gls", "se", "avantgarde", "ambiente", "amg", "highline")
+        self.known_trims = ("xs", "zx")
         
     def infer(self, car_entry):
         self.infer_make(car_entry)
@@ -99,7 +98,7 @@ class CarClassifier(object):
 # Main
 
 file_name = "sep-all.csv"
-min_year = 2010
+min_year = 2005
 
 # Logging shit
 
@@ -189,20 +188,31 @@ logger.info("Infered %s makes and %s models" % (make_infered, model_infered))
 
 logger.info("Unrecognised tokens")
 
-for x in sorted(unknown_wordlist, key=unknown_wordlist.get, reverse=True)[:50]:
-	logger.info("%5s %s" % (unknown_wordlist[x], x))
+for word in sorted(unknown_wordlist, key=unknown_wordlist.get, reverse=True)[:20]:
+	
 	rlu_make = {}
 	rlu_model = {}
 	for entry in entries:
-	    if entry.has_word(x)
+	    if entry.has_word(word):
 	        if entry.know_make():
 	            if entry.make in rlu_make:
 	                rlu_make[entry.make] += 1
 	            else:
 	                rlu_make[entry.make] = 1
+	        if entry.know_model():
+	            if entry.model in rlu_model:
+	                rlu_model[entry.model] += 1
+	            else:
+	                rlu_model[entry.model] = 1
 	breakdown_str = ""
-	for word in rlu_make:
-	    percentage = rlu_make[word]/float(unknown_wordlist[x])
+	for make in rlu_make:
+	    percentage = rlu_make[make]/float(unknown_wordlist[word])
 	    if percentage > 0.05:
-	        breakdown_str = breakdown_str + "%s:%.2f " % (word, percentage)
-	logger.info(breakdown_str)
+	        breakdown_str = breakdown_str + "%s:%.2f " % (make, percentage)
+	breakdown_str = breakdown_str + "## "
+	for model in rlu_model:
+	    percentage = rlu_model[model]/float(unknown_wordlist[word])
+	    if percentage > 0.05:
+	        breakdown_str = breakdown_str + "%s:%.2f " % (model, percentage)
+	#logger.info(breakdown_str)
+	logger.info("%5s %-10s %s" % (unknown_wordlist[word], word, breakdown_str))
