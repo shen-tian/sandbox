@@ -28,6 +28,12 @@ class CarEntry(object):
     def know_model(self):
         return self.model != ""
         
+    def has_word(self, word):
+        for token in self.tokens:
+            if token[0] is word: 
+                return True
+        return False
+        
 
 # The classification engine
 class CarClassifier(object):
@@ -188,7 +194,7 @@ for x in sorted(unknown_wordlist, key=unknown_wordlist.get, reverse=True)[:50]:
 	rlu_make = {}
 	rlu_model = {}
 	for entry in entries:
-	    if x in entry.description:
+	    if entry.has_word(x)
 	        if entry.know_make():
 	            if entry.make in rlu_make:
 	                rlu_make[entry.make] += 1
