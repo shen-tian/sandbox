@@ -98,7 +98,7 @@ class CarClassifier(object):
 # Main
 
 file_name = "sep-all.csv"
-min_year = 2005
+min_year = 2010
 
 # Logging shit
 
