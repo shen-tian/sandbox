@@ -19,12 +19,20 @@ model =  result.model
 
 scraper = ATScraper(make, model, result.tor)
 
-logging.basicConfig(level=logging.INFO)
+#logging.basicConfig(level=logging.INFO)
+
 handler = logging.FileHandler('scrape-%s.log' % datetime.datetime.now().strftime("%Y%m%d-%H%M"))
 handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 handler.setFormatter(formatter)
+
+s_handler = logging.StreamHandler()
+s_handler.setLevel(logging.INFO)
+s_handler.setFormatter(formatter)
+
+logging.getLogger().setLevel(logging.DEBUG)
 logging.getLogger().addHandler(handler)
+logging.getLogger().addHandler(s_handler)
 
 fileName = "%s-%s.csv" % (make, model)
 

@@ -17,7 +17,8 @@ class ATEntry(object):
         self.url = url
         
     def display_csv(self):
-        return "%s\t%s\t%s\t%s" % (self.year, self.model, self.price, self.mileage)
+        return "%s\t%s\t%s\t%s\t%s" % \
+            (self.year, self.model, self.price, self.mileage, self.url)
 
 # Scraper itself        
 class ATScraper(object):
@@ -40,7 +41,6 @@ class ATScraper(object):
         
         self.makeSession()
         
-        logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
             
     def makeSession(self):
@@ -73,6 +73,7 @@ class ATScraper(object):
         # (newCar, featureRes, and standard)
         if "newCar" in result["class"]:
             car_name = result.find("div", "resultHeader").find("h2").string.strip()
+            url = result.find("div", "resultHeader").find("h2").find("a")["href"]
             year_portion = car_name[:4]
             car_year = self.try_parse_int(year_portion)
             car_name = car_name[4:].strip()
@@ -80,9 +81,16 @@ class ATScraper(object):
         else:
             if "featureRes" in result["class"]:
                 car_name = result.find("h2", "serpTitleSma").string.strip()
+                url = result.find("h2", "serpTitleSma").find("a")["href"]
             else:
                 car_name = result.find("h2", "serpTitle").string.strip()
+                url = result.find("h2", "serpTitle").find("a")["href"]
             car_year = self.try_parse_int(result.find("div", "serpAge").string)
+        
+        # Cleaning the URL
+        trailing_bits = url.find("/makemodel")
+        if trailing_bits != -1:
+            url = url[:trailing_bits]            
         
         # This is the same for all three classes
         car_price = self.try_parse_int(result.find("div", "serpPrice").contents[0])
@@ -130,7 +138,7 @@ class ATScraper(object):
             except:
                 self.logger.warn("Error parsing entry on page %s" % page)
                 self.logger.debug(traceback.format_exc())
-                self.logger.debug(result.text)
+                self.logger.debug(result.contents)
         return entries
         
     # Gives number of pages for this query
