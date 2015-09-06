@@ -2,6 +2,7 @@ import csv
 import logging
 import datetime
 import traceback
+import json
 
 # A raw entry, to be classified. 
 class CarEntry(object):
@@ -42,14 +43,12 @@ class CarClassifier(object):
     # Constructor.
     # file_name is file with classification data
     def __init__(self, file_name):
-        self.known_makes = ("volkswagen","toyota","bmw","audi","mercedes-benz",
-            "ford","hyundai","chevrolet","nissan", "land rover", "kia", "jeep",
-            "opel","renault","isuzu","honda", "range rover", "suzuki", "mini", "mazda",
-            "peugeot")
-        self.known_models = ("polo", "polo vivo", "3 series", "c-class", "hilux", "golf",
-            "corolla", "raider", "i20", "ranger", "etios", "1 series", "a4", "kb", "spark",
-            "a3", "fortuner", "5 series", "figo", "i10", "ix35", "np200", "corsa", "amarok",
-            "grand i10", "a3 sportback", "4 series")
+    
+        with open(file_name) as data_file:    
+            data = json.load(data_file)
+        
+        self.known_makes = data["makes"]
+        self.known_models = data["models"]
         self.known_submodels = ("3.0d-4d","tdi")
         self.known_specs = ("auto", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", 
             "2.0", "a/t", "1.0", "tsi", "quattro", "dsg", "2.4", "2.5", "3.0", "3.2", "at")
