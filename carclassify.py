@@ -1,5 +1,6 @@
 import csv
-import logging
+import logging.config
+import os
 import datetime
 import traceback
 import json
@@ -49,22 +50,12 @@ class CarClassifier(object):
         
         self.known_makes = data["makes"]
         self.known_models = data["models"]
-        self.known_submodels = ("3.0d-4d","tdi")
-        self.known_specs = ("auto", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", 
-            "2.0", "a/t", "1.0", "tsi", "quattro", "dsg", "2.4", "2.5", "3.0", "3.2", "at")
-        self.known_shapes = ("hatch", "sedan", "double cab", "5-door", "5dr", "4x4", 
-            "coupe", "single cab", "p/u", "s/c")
-        self.known_trims = ("xs", "zx")
+        self.known_misc = data["misc"]
         
     def infer(self, car_entry):
         self.infer_make(car_entry)
         self.infer_model(car_entry)
-        self.infer_prop(car_entry, self.known_submodels, "submodel")
-        self.infer_spec(car_entry)
-        self.infer_prop(car_entry, self.known_shapes, "shape")
-        self.infer_prop(car_entry, self.known_trims, "trim")
-        
-    # This shit is way too messy :(. Refactor?
+        self.infer_prop(car_entry, self.known_misc, "misc")
     
     def infer_prop(self, car_entry, known_values, meta_tag):
         return_val = ""
@@ -90,10 +81,16 @@ class CarClassifier(object):
     
     def infer_model(self, car_entry):
         car_entry.model = self.infer_prop(car_entry, self.known_models, "model")
-                
-    def infer_spec(self, car_entry):
-        self.infer_prop(car_entry, self.known_specs, "spec")
-        
+
+# Logging setup 
+def setup_logging(default_path='logging.json', default_level=logging.INFO):
+        path = default_path
+        if os.path.exists(path):
+            with open(path, 'rt') as f:
+                config = json.load(f)
+            logging.config.dictConfig(config)
+        else:
+            logging.basicConfig(level=default_level)
 # Main
 
 file_name = "sep-all.csv"
@@ -101,19 +98,7 @@ min_year = 2010
 
 # Logging shit
 
-handler = logging.FileHandler('carclassify-%s.log' % datetime.datetime.now().strftime("%Y%m%d-%H%M"))
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-handler.setFormatter(formatter)
-
-s_handler = logging.StreamHandler()
-s_handler.setLevel(logging.INFO)
-s_handler.setFormatter(formatter)
-
-logging.getLogger().setLevel(logging.DEBUG)
-logging.getLogger().addHandler(handler)
-logging.getLogger().addHandler(s_handler)
-
+setup_logging()
 logger = logging.getLogger()
 
 # Initialise the classification engine
