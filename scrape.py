@@ -19,8 +19,6 @@ model =  result.model
 
 scraper = ATScraper(make, model, result.tor)
 
-#logging.basicConfig(level=logging.INFO)
-
 handler = logging.FileHandler('scrape-%s.log' % datetime.datetime.now().strftime("%Y%m%d-%H%M"))
 handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
@@ -47,6 +45,4 @@ for entry in entries:
     target.write(entry.display_csv().encode("utf-8"))
     target.write("\n")
 target.close()
-
-#logger.info("Wrote output to %s" % fileName)
     

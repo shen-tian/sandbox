@@ -132,7 +132,6 @@ for row in raw_data:
         
         if (row_as_string not in hashes) and (year > min_year) and (price > 1):
             hashes[row_as_string] = 1
-            #clean_data.append(row)
             entries.append(CarEntry(row[1], year, price, mileage))
     except:
         logger.debug("Parsing error with %s" % row[1])
@@ -145,6 +144,7 @@ logger.info("Starting with %s entries. filtered down to %s" % (len(raw_data), le
 logger.info("Classifying")
 
 unknown_wordlist = {}
+identified_models = {}
 
 make_infered = 0
 model_infered = 0
@@ -155,6 +155,11 @@ for entry in entries:
         make_infered += 1
     if entry.know_model():
         model_infered += 1
+        model_str = "%s :: %s" % (entry.make, entry.model)
+        if model_str in identified_models:
+            identified_models[model_str] += 1
+        else:
+            identified_models[model_str] = 1
     for token in entry.tokens:
         if token[1] is "":
             word = token[0]
@@ -168,11 +173,15 @@ for entry in entries:
 
 logger.info("Infered %s makes and %s models" % (make_infered, model_infered))
 
+# Report on top 20 models (yay?)
+
+for word in sorted(identified_models, key=identified_models.get, reverse=True)[:30]:
+    logger.info("%5s %-10s" % (identified_models[word], word))
 # Report on outstanding tokens
 
 logger.info("Unrecognised tokens")
 
-for word in sorted(unknown_wordlist, key=unknown_wordlist.get, reverse=True)[:20]:
+for word in sorted(unknown_wordlist, key=unknown_wordlist.get, reverse=True)[:50]:
 	
 	rlu_make = {}
 	rlu_model = {}
@@ -198,5 +207,4 @@ for word in sorted(unknown_wordlist, key=unknown_wordlist.get, reverse=True)[:20
 	    percentage = rlu_model[model]/float(unknown_wordlist[word])
 	    if percentage > 0.05:
 	        breakdown_str = breakdown_str + "%s:%.2f " % (model, percentage)
-	#logger.info(breakdown_str)
 	logger.info("%5s %-10s %s" % (unknown_wordlist[word], word, breakdown_str))
