@@ -68,5 +68,20 @@ def main():
     
     with open("history.json", "w") as output_file:
         output_file.write(json.dumps(history, sort_keys = True, indent = 4))
+        
+def short_list():
     
-main()
+    with open("history.json") as data_file:    
+        data = json.load(data_file)
+    
+    for model in data:
+        popular = False
+        for date in range(1501, 1509):
+            if str(date) in data[model]:
+                if data[model][str(date)] > 150:
+                    popular = True
+        if popular:
+            print model
+    
+#main()
+short_list()
