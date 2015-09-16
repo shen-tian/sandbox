@@ -52,6 +52,23 @@ class CarClassifier(object):
         self.known_models = data["models"]
         self.known_misc = data["misc"]
         
+    def guess_by_string(self, name_string):
+        result = {}
+        
+        words = str.split(name_string.lower())
+        
+        # Check if we can directly identify make
+        for word in words:
+            if word in self.known_makes:
+                result["make"] = {(word, 1)}
+        
+        # Check if we can directly identify model
+        for word in words:
+            if word in self.known_models:
+                result["model"] = {(word, 1)}
+        
+        return result
+        
     def infer(self, car_entry):
         self.infer_make(car_entry)
         self.infer_model(car_entry)
@@ -94,7 +111,7 @@ def setup_logging(default_path='logging.json', default_level=logging.INFO):
 # Main
 
 file_name = "sep-all.csv"
-min_year = 2010
+min_year = 2005
 
 # Logging shit
 
@@ -139,15 +156,15 @@ for row in raw_data:
 
 logger.info("Starting with %s entries. filtered down to %s" % (len(raw_data), len(entries)))
 
-# Try to classify everything
-
-logger.info("Classifying")
-
 unknown_wordlist = {}
 identified_models = {}
 
 make_infered = 0
 model_infered = 0
+
+# Try to classify everything
+
+logger.info("Classifying")
 
 for entry in entries:
     classifier.infer(entry)
@@ -167,44 +184,55 @@ for entry in entries:
                 unknown_wordlist[word] += 1
             else:
                 unknown_wordlist[word] = 1
-        
-
 # Report on success
-
 logger.info("Infered %s makes and %s models" % (make_infered, model_infered))
 
-# Report on top 20 models (yay?)
-
-for word in sorted(identified_models, key=identified_models.get, reverse=True)[:30]:
-    logger.info("%5s %-10s" % (identified_models[word], word))
 # Report on outstanding tokens
 
 logger.info("Unrecognised tokens")
 
-for word in sorted(unknown_wordlist, key=unknown_wordlist.get, reverse=True)[:50]:
-	
-	rlu_make = {}
-	rlu_model = {}
-	for entry in entries:
-	    if entry.has_word(word):
-	        if entry.know_make():
-	            if entry.make in rlu_make:
-	                rlu_make[entry.make] += 1
-	            else:
-	                rlu_make[entry.make] = 1
-	        if entry.know_model():
-	            if entry.model in rlu_model:
-	                rlu_model[entry.model] += 1
-	            else:
-	                rlu_model[entry.model] = 1
-	breakdown_str = ""
-	for make in rlu_make:
-	    percentage = rlu_make[make]/float(unknown_wordlist[word])
-	    if percentage > 0.05:
-	        breakdown_str = breakdown_str + "%s:%.2f " % (make, percentage)
-	breakdown_str = breakdown_str + "## "
-	for model in rlu_model:
-	    percentage = rlu_model[model]/float(unknown_wordlist[word])
-	    if percentage > 0.05:
-	        breakdown_str = breakdown_str + "%s:%.2f " % (model, percentage)
-	logger.info("%5s %-10s %s" % (unknown_wordlist[word], word, breakdown_str))
+for word in sorted(unknown_wordlist, key=unknown_wordlist.get, reverse=True)[:200]:
+    rlu_make = {}
+    rlu_model = {}
+    
+    has_make = 0
+    has_model = 0
+    match = 0
+    
+    for entry in entries:
+        if entry.has_word(word):
+            match += 1
+            if entry.know_make():
+                has_make += 1
+                if entry.make in rlu_make:
+                    rlu_make[entry.make] += 1
+                else:
+                    rlu_make[entry.make] = 1
+            if entry.know_model():
+                has_model += 1
+                if entry.model in rlu_model:
+                    rlu_model[entry.model] += 1
+                else:
+                    rlu_model[entry.model] = 1
+    
+    if has_model / float(match) > .1:
+        #print "sub"
+        continue 
+    elif has_make / float(match) > .9 and has_model / float(match) < .1:
+        print "model"
+    elif has_make / float(match) < .1:
+        print "make"
+    breakdown_str = ""
+    for make in rlu_make:
+        percentage = rlu_make[make]/float(unknown_wordlist[word])
+        if percentage > 0.05:
+            breakdown_str = breakdown_str + "%s:%.2f " % (make, percentage)
+    breakdown_str = breakdown_str + "## "
+    for model in rlu_model:
+        percentage = rlu_model[model]/float(unknown_wordlist[word])
+        if percentage > 0.05:
+            breakdown_str = breakdown_str + "%s:%.2f " % (model, percentage)
+    logger.info("%5s %-10s %s" % (unknown_wordlist[word], word, breakdown_str))
+
+#for entry in entries[10000:10010]:
+#    print "%s#%s" % (entry.description, classifier.guess_by_string(entry.description))
