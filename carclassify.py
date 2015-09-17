@@ -111,7 +111,7 @@ def setup_logging(default_path='logging.json', default_level=logging.INFO):
 # Main
 
 file_name = "sep-all.csv"
-min_year = 2005
+min_year = 2010
 
 # Logging shit
 
@@ -187,11 +187,52 @@ for entry in entries:
 # Report on success
 logger.info("Infered %s makes and %s models" % (make_infered, model_infered))
 
+# Do the MC analysis here.
+word_list = {}
+
+for entry in entries:
+    words = str.split(entry.description)
+    for word in words:
+        if word not in word_list:
+            word_list[word] = {}
+
+print "total of %s words" % len(word_list)
+
+# Now build the transition matrix
+for entry in entries:
+    words = str.split(entry.description)
+    for i in range(0, len(words) - 1):
+        if words[i + 1] in word_list[words[i]]:
+            word_list[words[i]][words[i + 1]] += 1
+        else:
+            word_list[words[i]][words[i + 1]] = 1
+            
+for word in sorted(word_list):
+    output = word + "#"
+    total = 0
+    most_common = 0
+    second = ""
+    for next_word in sorted(word_list[word], key=word_list[word].get, reverse=True):
+        output = output + "%s:%s, " % (next_word, word_list[word][next_word])
+        occurance = word_list[word][next_word]
+        if occurance > most_common:
+            most_common = occurance
+            second = next_word
+        total += word_list[word][next_word]
+    if total > 100 and most_common / float(total) > .99:
+        print output 
+        print "    " + word + " " + second
+    
+    
+            
+
 # Report on outstanding tokens
 
 logger.info("Unrecognised tokens")
 
-for word in sorted(unknown_wordlist, key=unknown_wordlist.get, reverse=True)[:200]:
+print "%s unknown tokens" % len(unknown_wordlist)
+
+for word in sorted(unknown_wordlist, key=unknown_wordlist.get, reverse=True)[:100]:
     rlu_make = {}
     rlu_model = {}
     
